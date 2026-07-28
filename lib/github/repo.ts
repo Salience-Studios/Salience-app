@@ -90,7 +90,28 @@ export async function commitFiles(
 ): Promise<string> {
   const gh = installationOctokit(ref.installationId);
   const branch = (await defaultBranch(ref)) ?? "main";
-  const parent = await headSha(ref);
+  let parent = await headSha(ref);
+
+  // The git data API cannot write to a repo with no commits — createBlob
+  // returns 409 "Git Repository is empty". The contents API can, and it
+  // creates the initial branch as a side effect. So bootstrap the first file
+  // through it, then fall through to the normal path for the rest.
+  //
+  // Net effect: an empty repo takes two commits, a populated one takes one.
+  if (!parent) {
+    const [first, ...rest] = files;
+    const { data: bootstrap } = await gh.repos.createOrUpdateFileContents({
+      owner: ref.owner,
+      repo: ref.name,
+      path: first.path,
+      message,
+      content: Buffer.from(first.content, "utf8").toString("base64"),
+      branch,
+    });
+    parent = bootstrap.commit.sha!;
+    if (rest.length === 0) return parent;
+    files = rest;
+  }
 
   const blobs = await Promise.all(
     files.map(async (f) => {
@@ -104,20 +125,17 @@ export async function commitFiles(
     }),
   );
 
-  let baseTree: string | undefined;
-  if (parent) {
-    const { data: parentCommit } = await gh.git.getCommit({
-      owner: ref.owner,
-      repo: ref.name,
-      commit_sha: parent,
-    });
-    baseTree = parentCommit.tree.sha;
-  }
+  // `parent` is guaranteed by the bootstrap above, so the branch always exists.
+  const { data: parentCommit } = await gh.git.getCommit({
+    owner: ref.owner,
+    repo: ref.name,
+    commit_sha: parent,
+  });
 
   const { data: tree } = await gh.git.createTree({
     owner: ref.owner,
     repo: ref.name,
-    base_tree: baseTree,
+    base_tree: parentCommit.tree.sha,
     tree: blobs.map((b) => ({
       path: b.path,
       mode: "100644" as const,
@@ -131,24 +149,15 @@ export async function commitFiles(
     repo: ref.name,
     message,
     tree: tree.sha,
-    parents: parent ? [parent] : [],
+    parents: [parent],
   });
 
-  if (parent) {
-    await gh.git.updateRef({
-      owner: ref.owner,
-      repo: ref.name,
-      ref: `heads/${branch}`,
-      sha: commit.sha,
-    });
-  } else {
-    await gh.git.createRef({
-      owner: ref.owner,
-      repo: ref.name,
-      ref: `refs/heads/${branch}`,
-      sha: commit.sha,
-    });
-  }
+  await gh.git.updateRef({
+    owner: ref.owner,
+    repo: ref.name,
+    ref: `heads/${branch}`,
+    sha: commit.sha,
+  });
 
   return commit.sha;
 }
