@@ -1,0 +1,128 @@
+/* Design tokens — Salience Brand identity v1.0, July 2026.
+   Single source of truth for colour, shape, and motion. No hardcoded hex anywhere else. */
+
+:root {
+  /* Surfaces */
+  --bg-base: #0b0c0e;
+  --bg-panel: #101215;
+  --bg-raised: #161a1d;
+
+  /* Borders — always 1px, never 2 */
+  --border: #1e2124;
+  --border-strong: #2a2f33;
+
+  /* Text */
+  --text: #f2f4f3;
+  --text-dim: #a3a9ae;
+  --text-muted: #6e7479;
+
+  /* Accents. Mint = savings, selection, primary action — never decoration.
+     Amber = money going out, only. Clay = danger. */
+  --accent: #8fe3b0;
+  --accent-dim: #4e7a62;
+  --accent-faint: #33473c;
+  --warn: #e0a868;
+  --danger: #d9736a;
+
+  /* Spacing — 4px base scale */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 22px;
+  --s-6: 30px;
+  --s-7: 44px;
+
+  /* Radius */
+  --r-chip: 4px;
+  --r-control: 6px;
+  --r-card: 9px;
+  --r-panel: 10px;
+
+  /* Motion */
+  --d-micro: 120ms;
+  --d-ui: 200ms;
+  --d-entrance: 300ms;
+  --e-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --e-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Light mode inverts to Paper with Mint Deep, which holds contrast on white.
+   Dark ships first — operators live in it. */
+:root[data-theme='light'] {
+  --bg-base: #f2f4f3;
+  --bg-panel: #ffffff;
+  --bg-raised: #f7f9f8;
+  --border: #dfe3e1;
+  --border-strong: #c7cdca;
+  --text: #0b0c0e;
+  --text-dim: #4a5153;
+  --text-muted: #6e7479;
+  --accent: #4e7a62;
+  --accent-dim: #8fe3b0;
+  --accent-faint: #cfe9db;
+}
+
+@theme inline {
+  --color-base: var(--bg-base);
+  --color-panel: var(--bg-panel);
+  --color-raised: var(--bg-raised);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-dim: var(--text-dim);
+  --color-ink-muted: var(--text-muted);
+  --color-mint: var(--accent);
+  --color-mint-dim: var(--accent-dim);
+  --color-mint-faint: var(--accent-faint);
+  --color-amber: var(--warn);
+  --color-clay: var(--danger);
+
+  --radius-chip: var(--r-chip);
+  --radius-control: var(--r-control);
+  --radius-card: var(--r-card);
+  --radius-panel: var(--r-panel);
+
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* Every numeral in the product is mono and tabular, so columns align. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Eyebrow labels */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Negative tracking above 24px */
+.display {
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+.heading-lg {
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+.heading-sm {
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
