@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
-import { db, workflows, stages, subjects } from "@/lib/db";
+import { db, workflows, stages, subjects, workspaces } from "@/lib/db";
 import { commitFiles, listTree, readFile, type FileWrite, type RepoRef } from "@/lib/github/repo";
 import { reconcile, type ReconcileReport } from "@/lib/github/reconcile";
 import { generateWorkflowFiles } from "@/lib/generate/workflow";
@@ -37,6 +37,7 @@ async function repoFor(workspaceId: string): Promise<RepoRef | null> {
  * M3 where concurrent approvals introduce the actual race.
  */
 async function commitStructure(
+  workspaceId: string,
   ref: RepoRef,
   files: FileWrite[],
   message: string,
@@ -44,6 +45,13 @@ async function commitStructure(
 ): Promise<{ error: string } | { sha: string }> {
   try {
     const sha = await commitFiles(ref, files, message, deletePaths);
+    // Record the commit we just made as the state the index was built from.
+    // Without this every structure write leaves head_sha stale, so the
+    // workspace reports drift against its own writes.
+    await db
+      .update(workspaces)
+      .set({ headSha: sha })
+      .where(eq(workspaces.id, workspaceId));
     return { sha };
   } catch (e) {
     const reason = e instanceof Error ? e.message : "unknown error";
@@ -77,6 +85,7 @@ export async function createWorkflow(_prev: unknown, formData: FormData): Promis
   const files = generateWorkflowFiles({ id, name, purpose, position });
 
   const commit = await commitStructure(
+    workspaceId,
     ref,
     files,
     `Salience: add workflow "${name}"`,
@@ -148,6 +157,7 @@ export async function createStage(_prev: unknown, formData: FormData): Promise<R
   });
 
   const commit = await commitStructure(
+    workspaceId,
     ref,
     files,
     `Salience: add stage "${name}" to ${workflow.name}`,
@@ -244,6 +254,7 @@ export async function moveStage(stageId: string, direction: -1 | 1) {
   if (!moves.length) return;
 
   const commit = await commitStructure(
+    workflow.workspaceId,
     ref,
     moves,
     `Salience: reorder ${workflow.name} stages`,
@@ -292,6 +303,7 @@ export async function createSubject(_prev: unknown, formData: FormData): Promise
   });
 
   const commit = await commitStructure(
+    workspaceId,
     ref,
     files,
     `Salience: add subject "${name}"`,
