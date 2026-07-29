@@ -29,7 +29,17 @@ function bullets(raw: string): string {
     .split("\n")
     .map((l) => l.trim().replace(/^[-*]\s*/, ""))
     .filter(Boolean);
-  return lines.length ? lines.map((l) => `- ${l}`).join("\n") : "_None recorded._";
+  return lines.map((l) => `- ${l}`).join("\n");
+}
+
+/**
+ * An empty section is omitted, not filled with a placeholder. These files are
+ * read at the top of every session, so a heading over "_Not recorded._" costs
+ * tokens to say nothing. A missing section is honest; a filled one is noise.
+ */
+function section(title: string, body: string): string {
+  const trimmed = body.trim();
+  return trimmed ? `## ${title}\n${trimmed}\n\n` : "";
 }
 
 /**
@@ -49,25 +59,14 @@ One stage at a time. Never skip ahead. Every completed stage produces one file i
 export function generateWorkspaceFiles(config: WorkspaceConfig): FileWrite[] {
   const claude =
     frontMatter({ salience: "workspace", kind: "claude", name: config.name }) +
-    `# CLAUDE.md — ${config.name}
-
-Read this first. Then read \`Context.md\`. Both, every session.
-
-## What this is
-${config.what || "_Not recorded._"}
-
-## Voice and standards
-${config.voice || "_Not recorded._"}
-
-## Stack
-${config.stack || "_Not recorded._"}
-
-## Conventions
-${config.conventions || "_Not recorded._"}
-
-${READING_ORDER}
-
-## Structure
+    `# CLAUDE.md — ${config.name}\n\n` +
+    "Read this first. Then read `Context.md`. Both, every session.\n\n" +
+    section("What this is", config.what) +
+    section("Voice and standards", config.voice) +
+    section("Stack", config.stack) +
+    section("Conventions", config.conventions) +
+    `${READING_ORDER}\n\n` +
+    `## Structure
 \`\`\`
 ${config.name}/
 ├── CLAUDE.md       ← read first
@@ -82,20 +81,14 @@ Keep every file short. No preamble, no recap of what you just did.
 
   const context =
     frontMatter({ salience: "workspace", kind: "context", name: config.name }) +
-    `# Context
-
-## What this is
-${config.what || "_Not recorded._"}
-
-## Purpose
-Make quality repeatable so it does not depend on memory. Each stage has a fixed input, a fixed job, and one file as output.
-
-## Do
-${bullets(config.alwaysDo)}
-
-## Avoid
-${bullets(config.neverDo)}
-`;
+    "# Context\n\n" +
+    section("What this is", config.what) +
+    section(
+      "Purpose",
+      "Make quality repeatable so it does not depend on memory. Each stage has a fixed input, a fixed job, and one file as output.",
+    ) +
+    section("Do", bullets(config.alwaysDo)) +
+    section("Avoid", bullets(config.neverDo));
 
   return [
     { path: "CLAUDE.md", content: claude },

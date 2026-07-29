@@ -90,6 +90,73 @@ export function StatTile({
   );
 }
 
+/**
+ * Wizard progress. Completed steps are clickable so a user can go back and
+ * change an answer without losing the ones after it; steps ahead of the
+ * current one are disabled, because they have not been validated yet.
+ */
+export function Steps({
+  steps,
+  current,
+  onSelect,
+}: {
+  steps: readonly string[];
+  current: number;
+  onSelect: (index: number) => void;
+}) {
+  return (
+    <nav aria-label="Progress">
+      <ol className="flex flex-wrap items-center gap-y-[var(--s-2)]">
+        {steps.map((label, i) => {
+          const done = i < current;
+          const active = i === current;
+          return (
+            <li key={label} className="flex items-center">
+              {i > 0 && (
+                <span
+                  aria-hidden
+                  className="mx-[var(--s-2)] h-px w-[var(--s-4)] bg-[var(--border-strong)]"
+                />
+              )}
+              <button
+                type="button"
+                disabled={i > current}
+                onClick={() => onSelect(i)}
+                aria-current={active ? "step" : undefined}
+                className={cx(
+                  "flex items-center gap-[var(--s-2)] rounded-[var(--r-chip)] transition-colors disabled:cursor-default",
+                  active
+                    ? "text-[var(--text)]"
+                    : done
+                      ? "text-[var(--text-dim)] hover:text-[var(--text)]"
+                      : "text-[var(--text-muted)]",
+                )}
+                style={{ transitionDuration: "var(--d-micro)" }}
+              >
+                <span
+                  aria-hidden
+                  className={cx(
+                    "size-2 rounded-full border",
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent)]"
+                      : done
+                        ? "border-[var(--accent-dim)] bg-[var(--accent-dim)]"
+                        : "border-[var(--border-strong)]",
+                  )}
+                />
+                <span className="eyebrow eyebrow-tinted hidden sm:inline">
+                  {label}
+                </span>
+                <span className="sr-only sm:hidden">{label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 export function Field({
   label,
   hint,

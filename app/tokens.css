@@ -103,6 +103,13 @@
   color: var(--text-muted);
 }
 
+/* Eyebrow that takes its colour from its container instead of the muted
+   default, so a parent can tint it. Declared after .eyebrow deliberately —
+   equal specificity, so source order decides. */
+.eyebrow-tinted {
+  color: inherit;
+}
+
 /* Negative tracking above 24px */
 .display {
   letter-spacing: -0.045em;

@@ -23,3 +23,20 @@ a {
   outline: 1px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Step entrance. Opacity and transform only, 8px of movement.
+   prefers-reduced-motion is neutralised globally in tokens.css. */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.step-in {
+  animation: step-in var(--d-entrance) var(--e-entrance) both;
+}

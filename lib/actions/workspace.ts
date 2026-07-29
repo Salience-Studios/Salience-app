@@ -30,15 +30,82 @@ async function userAccessToken(userId: string): Promise<string | null> {
   return row?.token ?? null;
 }
 
-export async function getInstallableRepos(): Promise<InstallationRepo[]> {
+/**
+ * "No repositories" and "GitHub is unreachable" are different problems with
+ * different fixes, so they are never collapsed into one empty state.
+ */
+export type ReposResult =
+  | { ok: true; repos: InstallationRepo[] }
+  | { ok: false; reason: string };
+
+export async function getInstallableRepos(): Promise<ReposResult> {
   const userId = await requireUserId();
   const token = await userAccessToken(userId);
-  if (!token) return [];
-  try {
-    return await listInstallationRepos(token);
-  } catch {
-    return [];
+  if (!token) {
+    return {
+      ok: false,
+      reason: "Your GitHub sign-in has no access token. Sign out and back in.",
+    };
   }
+  try {
+    return { ok: true, repos: await listInstallationRepos(token) };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : "unknown error";
+    return { ok: false, reason: `GitHub could not be reached: ${reason}` };
+  }
+}
+
+export type RepoReadiness =
+  | { ok: true; empty: boolean }
+  | { ok: false; reason: string };
+
+/**
+ * Validate a repository the moment it is picked, not after the whole form is
+ * filled. Both failures here are terminal for that repo, and the end of a
+ * multi-step form is the worst possible place to learn it.
+ *
+ * `createWorkspace` repeats these checks — this one is for the user, that one
+ * is the guard. Check-then-commit is racy by nature and the commit path is
+ * what has to be right.
+ */
+export async function checkRepo(
+  installationId: number,
+  owner: string,
+  name: string,
+): Promise<RepoReadiness> {
+  await requireUserId();
+  if (!installationId || !owner || !name) {
+    return { ok: false, reason: "That repository selection could not be read." };
+  }
+
+  const existing = await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(and(eq(workspaces.repoOwner, owner), eq(workspaces.repoName, name)))
+    .limit(1);
+  if (existing.length) {
+    return {
+      ok: false,
+      reason: `${owner}/${name} is already connected to a workspace.`,
+    };
+  }
+
+  let tree;
+  try {
+    tree = await listTree({ installationId, owner, name });
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : "unknown error";
+    return { ok: false, reason: `GitHub could not read ${owner}/${name}: ${reason}` };
+  }
+
+  if (tree.some((entry) => entry.path === "CLAUDE.md")) {
+    return {
+      ok: false,
+      reason: `${owner}/${name} already contains a CLAUDE.md. Pick an empty repository.`,
+    };
+  }
+
+  return { ok: true, empty: tree.length === 0 };
 }
 
 export async function createWorkspace(
