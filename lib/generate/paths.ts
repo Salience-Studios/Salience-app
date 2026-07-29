@@ -22,16 +22,16 @@ export function stageFolder(position: number, name: string): string {
   return `${String(position).padStart(2, "0")}_${folderName(name)}`;
 }
 
-export function systemPath(systemName: string): string {
-  return `Systems/${folderName(systemName)}`;
+export function workflowPath(workflowName: string): string {
+  return `Workflows/${folderName(workflowName)}`;
 }
 
 export function stagePath(
-  systemName: string,
+  workflowName: string,
   position: number,
   stageName: string,
 ): string {
-  return `${systemPath(systemName)}/${stageFolder(position, stageName)}`;
+  return `${workflowPath(workflowName)}/${stageFolder(position, stageName)}`;
 }
 
 export function subjectPath(slug: string): string {
@@ -41,12 +41,12 @@ export function subjectPath(slug: string): string {
 /** Where an approved output lands, and where it is mirrored for the subject. */
 export function outputPaths(
   stageDir: string,
-  systemName: string,
+  workflowName: string,
   stageName: string,
   subjectSlug: string,
 ) {
   return {
     path: `${stageDir}/outputs/${subjectSlug}.md`,
-    mirrorPath: `${subjectPath(subjectSlug)}/${folderName(systemName)}_${folderName(stageName)}.md`,
+    mirrorPath: `${subjectPath(subjectSlug)}/${folderName(workflowName)}_${folderName(stageName)}.md`,
   };
 }

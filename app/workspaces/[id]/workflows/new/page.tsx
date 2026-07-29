@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWorkspace } from "@/lib/actions/workspace";
 import { Eyebrow } from "@/components/ui";
-import { SystemForm } from "./form";
+import { WorkflowForm } from "./form";
 
-export default async function NewSystem({
+export default async function NewWorkflow({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -18,11 +18,11 @@ export default async function NewSystem({
       <header className="mb-[var(--s-6)]">
         <Eyebrow>{ws.name}</Eyebrow>
         <h1 className="heading-lg mt-[var(--s-1)] text-2xl font-semibold">
-          New system
+          New workflow
         </h1>
       </header>
 
-      <SystemForm workspaceId={id} />
+      <WorkflowForm workspaceId={id} />
 
       <p className="mt-[var(--s-5)] text-sm">
         <Link href={`/workspaces/${id}`}>Back to workspace</Link>

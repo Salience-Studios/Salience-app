@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWorkspace, readWorkspaceFile } from "@/lib/actions/workspace";
-import { getSubject, listSystems, listStages } from "@/lib/actions/structure";
+import { getSubject, listWorkflows, listStages } from "@/lib/actions/structure";
 import { subjectPath } from "@/lib/generate/paths";
 import {
   Button,
@@ -25,15 +25,15 @@ export default async function SubjectDetail({
   if (!ws || !subject || subject.workspaceId !== id) notFound();
 
   const contextPath = `${subjectPath(subject.slug)}/Context.md`;
-  const [systems, context] = await Promise.all([
-    listSystems(id),
+  const [workflows, context] = await Promise.all([
+    listWorkflows(id),
     readWorkspaceFile(id, contextPath),
   ]);
 
   const boards = await Promise.all(
-    systems.map(async (system) => ({
-      system,
-      stages: await listStages(system.id),
+    workflows.map(async (workflow) => ({
+      workflow,
+      stages: await listStages(workflow.id),
     })),
   );
 
@@ -69,29 +69,29 @@ export default async function SubjectDetail({
       </Panel>
 
       <h2 className="heading-sm mb-[var(--s-3)] text-lg font-medium">
-        Systems
+        Workflows
       </h2>
 
       {boards.length === 0 ? (
         <EmptyState
-          title="No systems to run"
-          body="This workspace has no systems yet. A subject moves through a system's stages — create one to give this subject somewhere to go."
+          title="No workflows to run"
+          body="This workspace has no workflows yet. A subject moves through a workflow's stages — create one to give this subject somewhere to go."
           action={
-            <Link href={`/workspaces/${id}/systems/new`}>
-              <Button variant="primary">Create a system</Button>
+            <Link href={`/workspaces/${id}/workflows/new`}>
+              <Button variant="primary">Create a workflow</Button>
             </Link>
           }
         />
       ) : (
         <div className="grid gap-[var(--s-3)] md:grid-cols-2">
-          {boards.map(({ system, stages }) => (
-            <Panel key={system.id} className="flex flex-col gap-[var(--s-3)] p-[var(--s-4)]">
+          {boards.map(({ workflow, stages }) => (
+            <Panel key={workflow.id} className="flex flex-col gap-[var(--s-3)] p-[var(--s-4)]">
               <div className="flex flex-wrap items-center justify-between gap-[var(--s-2)]">
                 <Link
-                  href={`/workspaces/${id}/systems/${system.id}`}
+                  href={`/workspaces/${id}/workflows/${workflow.id}`}
                   className="text-base font-medium"
                 >
-                  {system.name}
+                  {workflow.name}
                 </Link>
                 <Chip>{stages.length} stages</Chip>
               </div>

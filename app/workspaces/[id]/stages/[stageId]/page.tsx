@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWorkspace } from "@/lib/actions/workspace";
-import { getStage, getSystem, readStageFile } from "@/lib/actions/structure";
+import { getStage, getWorkflow, readStageFile } from "@/lib/actions/structure";
 import { estimateTokens } from "@/lib/tokens";
 import { modelLabel } from "@/lib/models";
 import { parseGrants } from "@/lib/tools";
@@ -23,11 +23,11 @@ export default async function StageDetail({
   const stage = await getStage(stageId);
   if (!stage) notFound();
 
-  const [ws, system] = await Promise.all([
+  const [ws, workflow] = await Promise.all([
     getWorkspace(id),
-    getSystem(stage.systemId),
+    getWorkflow(stage.workflowId),
   ]);
-  if (!ws || !system || system.workspaceId !== id) notFound();
+  if (!ws || !workflow || workflow.workspaceId !== id) notFound();
 
   const [context, references] = await Promise.all([
     readStageFile(stageId, "Context.md"),
@@ -39,7 +39,7 @@ export default async function StageDetail({
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-[var(--s-4)] py-[var(--s-6)]">
       <header className="mb-[var(--s-5)]">
-        <Eyebrow>{system.name}</Eyebrow>
+        <Eyebrow>{workflow.name}</Eyebrow>
         <h1 className="heading-lg mt-[var(--s-1)] flex flex-wrap items-center gap-[var(--s-3)] text-2xl font-semibold">
           <Num tone="dim" className="text-xl">
             {String(stage.position).padStart(2, "0")}
@@ -119,8 +119,8 @@ export default async function StageDetail({
       </div>
 
       <p className="mt-[var(--s-5)] text-sm">
-        <Link href={`/workspaces/${id}/systems/${system.id}`}>
-          Back to {system.name}
+        <Link href={`/workspaces/${id}/workflows/${workflow.id}`}>
+          Back to {workflow.name}
         </Link>
       </p>
     </main>

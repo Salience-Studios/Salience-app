@@ -33,7 +33,7 @@ export function describeInput(token: string): string {
 
 export type StageConfig = {
   id: string;
-  systemName: string;
+  workflowName: string;
   position: number;
   name: string;
   type: StageType;
@@ -83,7 +83,7 @@ function inputLines(tokens: string[]): string {
 }
 
 export function generateStageFiles(config: StageConfig): FileWrite[] {
-  const dir = stagePath(config.systemName, config.position, config.name);
+  const dir = stagePath(config.workflowName, config.position, config.name);
 
   const frontMatter = writeFrontMatter({
     salience: "stage",
@@ -102,7 +102,7 @@ export function generateStageFiles(config: StageConfig): FileWrite[] {
 
   const context =
     frontMatter +
-    `# ${config.systemName} — ${String(config.position).padStart(2, "0")}_${config.name}\n\n` +
+    `# ${config.workflowName} — ${String(config.position).padStart(2, "0")}_${config.name}\n\n` +
     (config.goal.trim() ? `Goal: ${config.goal.trim()}\n\n` : "") +
     `Type: ${config.type}. ${
       config.type === "build"

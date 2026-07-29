@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
-import { db, systems, stages, subjects } from "@/lib/db";
+import { db, workflows, stages, subjects } from "@/lib/db";
 import { commitFiles, listTree, readFile, type FileWrite, type RepoRef } from "@/lib/github/repo";
 import { reconcile, type ReconcileReport } from "@/lib/github/reconcile";
-import { generateSystemFiles } from "@/lib/generate/system";
+import { generateWorkflowFiles } from "@/lib/generate/workflow";
 import { generateStageFiles } from "@/lib/generate/stage";
 import { generateSubjectFiles, subjectSlug } from "@/lib/generate/subject";
 import { parseFrontMatter, writeFrontMatter } from "@/lib/generate/frontmatter";
-import { stagePath, systemPath } from "@/lib/generate/paths";
+import { stagePath, workflowPath } from "@/lib/generate/paths";
 import { parseGrants, grantsFor, encodeGrant, type StageType } from "@/lib/tools";
 import { getWorkspace } from "./workspace";
 
@@ -51,39 +51,39 @@ async function commitStructure(
   }
 }
 
-/* -------------------------------------------------------------- Systems */
+/* ------------------------------------------------------------ Workflows */
 
-export async function createSystem(_prev: unknown, formData: FormData): Promise<Result> {
+export async function createWorkflow(_prev: unknown, formData: FormData): Promise<Result> {
   const workspaceId = String(formData.get("workspaceId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const purpose = String(formData.get("purpose") ?? "").trim();
 
   const ref = await repoFor(workspaceId);
   if (!ref) return { error: "Workspace not found." };
-  if (!name) return { error: "Give the system a name." };
+  if (!name) return { error: "Give the workflow a name." };
 
   const siblings = await db
-    .select({ id: systems.id, repoPath: systems.repoPath })
-    .from(systems)
-    .where(eq(systems.workspaceId, workspaceId));
+    .select({ id: workflows.id, repoPath: workflows.repoPath })
+    .from(workflows)
+    .where(eq(workflows.workspaceId, workspaceId));
 
-  const dir = systemPath(name);
-  if (siblings.some((s) => s.repoPath === dir)) {
-    return { error: `A system already lives at ${dir}.` };
+  const dir = workflowPath(name);
+  if (siblings.some((w) => w.repoPath === dir)) {
+    return { error: `A workflow already lives at ${dir}.` };
   }
 
   const id = crypto.randomUUID();
   const position = siblings.length + 1;
-  const files = generateSystemFiles({ id, name, purpose, position });
+  const files = generateWorkflowFiles({ id, name, purpose, position });
 
   const commit = await commitStructure(
     ref,
     files,
-    `Salience: add system "${name}"`,
+    `Salience: add workflow "${name}"`,
   );
   if ("error" in commit) return commit;
 
-  await db.insert(systems).values({
+  await db.insert(workflows).values({
     id,
     workspaceId,
     name,
@@ -93,21 +93,21 @@ export async function createSystem(_prev: unknown, formData: FormData): Promise<
   });
 
   revalidatePath(`/workspaces/${workspaceId}`);
-  redirect(`/workspaces/${workspaceId}/systems/${id}`);
+  redirect(`/workspaces/${workspaceId}/workflows/${id}`);
 }
 
 /* --------------------------------------------------------------- Stages */
 
 export async function createStage(_prev: unknown, formData: FormData): Promise<Result> {
-  const systemId = String(formData.get("systemId") ?? "");
-  const [system] = await db
+  const workflowId = String(formData.get("workflowId") ?? "");
+  const [workflow] = await db
     .select()
-    .from(systems)
-    .where(eq(systems.id, systemId))
+    .from(workflows)
+    .where(eq(workflows.id, workflowId))
     .limit(1);
-  if (!system) return { error: "System not found." };
+  if (!workflow) return { error: "Workflow not found." };
 
-  const workspaceId = system.workspaceId;
+  const workspaceId = workflow.workspaceId;
   const ref = await repoFor(workspaceId);
   if (!ref) return { error: "Workspace not found." };
 
@@ -120,7 +120,7 @@ export async function createStage(_prev: unknown, formData: FormData): Promise<R
   const siblings = await db
     .select({ position: stages.position })
     .from(stages)
-    .where(eq(stages.systemId, systemId));
+    .where(eq(stages.workflowId, workflowId));
   const position = siblings.length + 1;
 
   const tools = grantsFor(type, parseGrants(formData.getAll("tools").map(String)));
@@ -131,7 +131,7 @@ export async function createStage(_prev: unknown, formData: FormData): Promise<R
   const id = crypto.randomUUID();
   const files = generateStageFiles({
     id,
-    systemName: system.name,
+    workflowName: workflow.name,
     position,
     name,
     type,
@@ -150,13 +150,13 @@ export async function createStage(_prev: unknown, formData: FormData): Promise<R
   const commit = await commitStructure(
     ref,
     files,
-    `Salience: add stage "${name}" to ${system.name}`,
+    `Salience: add stage "${name}" to ${workflow.name}`,
   );
   if ("error" in commit) return commit;
 
   await db.insert(stages).values({
     id,
-    systemId,
+    workflowId,
     position,
     name,
     type,
@@ -165,11 +165,11 @@ export async function createStage(_prev: unknown, formData: FormData): Promise<R
     allowedTools: tools.map(encodeGrant),
     toolCeilingTokens: Number.isFinite(ceiling) && ceiling > 0 ? ceiling : 20000,
     defaultModel,
-    repoPath: stagePath(system.name, position, name),
+    repoPath: stagePath(workflow.name, position, name),
   });
 
-  revalidatePath(`/workspaces/${workspaceId}/systems/${systemId}`);
-  redirect(`/workspaces/${workspaceId}/systems/${systemId}`);
+  revalidatePath(`/workspaces/${workspaceId}/workflows/${workflowId}`);
+  redirect(`/workspaces/${workspaceId}/workflows/${workflowId}`);
 }
 
 /**
@@ -186,24 +186,24 @@ export async function moveStage(stageId: string, direction: -1 | 1) {
     .limit(1);
   if (!stage) return;
 
-  const [system] = await db
+  const [workflow] = await db
     .select()
-    .from(systems)
-    .where(eq(systems.id, stage.systemId))
+    .from(workflows)
+    .where(eq(workflows.id, stage.workflowId))
     .limit(1);
-  if (!system) return;
+  if (!workflow) return;
 
   const ordered = await db
     .select()
     .from(stages)
-    .where(eq(stages.systemId, stage.systemId))
+    .where(eq(stages.workflowId, stage.workflowId))
     .orderBy(asc(stages.position));
 
   const index = ordered.findIndex((s) => s.id === stageId);
   const swapWith = ordered[index + direction];
   if (!swapWith) return;
 
-  const ref = await repoFor(system.workspaceId);
+  const ref = await repoFor(workflow.workspaceId);
   if (!ref) return;
 
   const tree = await listTree(ref);
@@ -217,7 +217,7 @@ export async function moveStage(stageId: string, direction: -1 | 1) {
 
   for (const { row, to } of plan) {
     const from = row.repoPath;
-    const dest = stagePath(system.name, to, row.name);
+    const dest = stagePath(workflow.name, to, row.name);
     if (from === dest) continue;
 
     for (const entry of tree) {
@@ -232,7 +232,7 @@ export async function moveStage(stageId: string, direction: -1 | 1) {
     const original = await readFile(ref, `${from}/Context.md`);
     const parsed = original ? parseFrontMatter(original) : null;
     if (parsed) {
-      const heading = `# ${system.name} — ${String(to).padStart(2, "0")}_${row.name}`;
+      const heading = `# ${workflow.name} — ${String(to).padStart(2, "0")}_${row.name}`;
       const body = parsed.body.replace(/^#\s.*$/m, heading);
       moves.push({
         path: `${dest}/Context.md`,
@@ -246,7 +246,7 @@ export async function moveStage(stageId: string, direction: -1 | 1) {
   const commit = await commitStructure(
     ref,
     moves,
-    `Salience: reorder ${system.name} stages`,
+    `Salience: reorder ${workflow.name} stages`,
     removals,
   );
   if ("error" in commit) return;
@@ -254,11 +254,11 @@ export async function moveStage(stageId: string, direction: -1 | 1) {
   for (const { row, to } of plan) {
     await db
       .update(stages)
-      .set({ position: to, repoPath: stagePath(system.name, to, row.name) })
+      .set({ position: to, repoPath: stagePath(workflow.name, to, row.name) })
       .where(eq(stages.id, row.id));
   }
 
-  revalidatePath(`/workspaces/${system.workspaceId}/systems/${system.id}`);
+  revalidatePath(`/workspaces/${workflow.workspaceId}/workflows/${workflow.id}`);
 }
 
 /* ------------------------------------------------------------- Subjects */
@@ -306,28 +306,28 @@ export async function createSubject(_prev: unknown, formData: FormData): Promise
 
 /* --------------------------------------------------------------- Reads */
 
-export async function listSystems(workspaceId: string) {
+export async function listWorkflows(workspaceId: string) {
   return db
     .select()
-    .from(systems)
-    .where(eq(systems.workspaceId, workspaceId))
-    .orderBy(asc(systems.position));
+    .from(workflows)
+    .where(eq(workflows.workspaceId, workspaceId))
+    .orderBy(asc(workflows.position));
 }
 
-export async function getSystem(systemId: string) {
+export async function getWorkflow(workflowId: string) {
   const [row] = await db
     .select()
-    .from(systems)
-    .where(eq(systems.id, systemId))
+    .from(workflows)
+    .where(eq(workflows.id, workflowId))
     .limit(1);
   return row ?? null;
 }
 
-export async function listStages(systemId: string) {
+export async function listStages(workflowId: string) {
   return db
     .select()
     .from(stages)
-    .where(eq(stages.systemId, systemId))
+    .where(eq(stages.workflowId, workflowId))
     .orderBy(asc(stages.position));
 }
 
@@ -360,9 +360,9 @@ export async function getSubject(subjectId: string) {
 export async function readStageFile(stageId: string, file: "Context.md" | "References.md") {
   const stage = await getStage(stageId);
   if (!stage) return null;
-  const system = await getSystem(stage.systemId);
-  if (!system) return null;
-  const ref = await repoFor(system.workspaceId);
+  const workflow = await getWorkflow(stage.workflowId);
+  if (!workflow) return null;
+  const ref = await repoFor(workflow.workspaceId);
   if (!ref) return null;
   return readFile(ref, `${stage.repoPath}/${file}`);
 }

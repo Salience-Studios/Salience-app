@@ -20,7 +20,7 @@ export function SubjectForm({ workspaceId }: { workspaceId: string }) {
     {
       label: "Subject",
       title: "Name the subject",
-      sub: "The client, project, or period a pass through a system is about.",
+      sub: "The client, project, or period a pass through a workflow is about.",
       blocker: ({ draft }) => {
         if (!draft.name.trim()) return "Give the subject a name.";
         if (!draft.what.trim()) return "Add one line on what this subject is.";

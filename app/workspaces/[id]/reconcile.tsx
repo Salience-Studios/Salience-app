@@ -69,7 +69,7 @@ export function Reconcile({
         <div className="flex flex-col gap-[var(--s-2)]">
           <p className="text-sm text-[var(--text-dim)]">
             Index rebuilt from the repository:{" "}
-            <Num>{report.systems}</Num> systems, <Num>{report.stages}</Num>{" "}
+            <Num>{report.workflows}</Num> workflows, <Num>{report.stages}</Num>{" "}
             stages, <Num>{report.subjects}</Num> subjects.
           </p>
           {report.issues.length > 0 && (

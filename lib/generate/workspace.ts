@@ -65,8 +65,8 @@ export function generateWorkspaceFiles(config: WorkspaceConfig): FileWrite[] {
 ${config.name}/
 ├── CLAUDE.md       ← read first
 ├── Context.md      ← read second
-├── Systems/        ← one folder per repeatable workflow
-│   └── <System>/<NN_Stage>/{Context.md, References.md, outputs/}
+├── Workflows/      ← one folder per repeatable workflow
+│   └── <Workflow>/<NN_Stage>/{Context.md, References.md, outputs/}
 └── Subjects/       ← one folder per client, project, or period
 \`\`\`
 
@@ -87,7 +87,7 @@ Keep every file short. No preamble, no recap of what you just did.
   return [
     { path: "CLAUDE.md", content: claude },
     { path: "Context.md", content: context },
-    { path: "Systems/.gitkeep", content: "" },
+    { path: "Workflows/.gitkeep", content: "" },
     { path: "Subjects/.gitkeep", content: "" },
   ];
 }

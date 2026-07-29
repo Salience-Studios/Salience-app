@@ -23,7 +23,7 @@ import { CheckList, Choice, FilePreview } from "@/components/config";
 import { Chip, Field, Input, Num, Panel, Textarea } from "@/components/ui";
 
 type Draft = {
-  systemId: string;
+  workflowId: string;
   name: string;
   type: string;
   goal: string;
@@ -41,13 +41,13 @@ type Draft = {
 export type PriorStage = { folder: string; name: string };
 
 export function StageForm({
-  systemId,
-  systemName,
+  workflowId,
+  workflowName,
   position,
   priorStages,
 }: {
-  systemId: string;
-  systemName: string;
+  workflowId: string;
+  workflowName: string;
   position: number;
   priorStages: PriorStage[];
 }) {
@@ -63,7 +63,7 @@ export function StageForm({
       },
       render: ({ draft, set }) => (
         <Panel className="flex flex-col gap-[var(--s-5)] p-[var(--s-5)]">
-          <Field label="Stage name" hint="Numbered by position in the system.">
+          <Field label="Stage name" hint="Numbered by position in the workflow.">
             <Input
               value={draft.name}
               onChange={(e) => set("name", e.target.value)}
@@ -73,7 +73,7 @@ export function StageForm({
               <span className="text-sm text-[var(--text-muted)]">
                 Folder:{" "}
                 <Num className="text-xs">
-                  {stagePath(systemName, position, draft.name)}
+                  {stagePath(workflowName, position, draft.name)}
                 </Num>
               </span>
             )}
@@ -243,7 +243,7 @@ export function StageForm({
         <FilePreview
           files={generateStageFiles({
             id: "(assigned on save)",
-            systemName,
+            workflowName,
             position,
             name: draft.name,
             type: draft.type as StageType,
@@ -267,7 +267,7 @@ export function StageForm({
     <Wizard
       steps={steps}
       initial={{
-        systemId,
+        workflowId,
         name: "",
         type: "text",
         goal: "",
@@ -281,13 +281,13 @@ export function StageForm({
         closingRule: "",
         referenceRules: "",
       }}
-      storageKey={`salience:new-stage:${systemId}`}
+      storageKey={`salience:new-stage:${workflowId}`}
       action={createStage}
       context={undefined}
       submitLabel="Create stage"
       pendingLabel="Committing…"
       footnote={(draft) =>
-        `Commits three files to ${systemName}/${stageFolder(position, draft.name)}.`
+        `Commits three files to ${workflowName}/${stageFolder(position, draft.name)}.`
       }
     />
   );

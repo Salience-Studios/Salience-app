@@ -100,7 +100,7 @@ export const workspaces = pgTable(
   (t) => [uniqueIndex("workspaces_repo_idx").on(t.repoOwner, t.repoName)],
 );
 
-export const systems = pgTable("systems", {
+export const workflows = pgTable("workflows", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -117,9 +117,9 @@ export const stages = pgTable("stages", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  systemId: text("system_id")
+  workflowId: text("workflow_id")
     .notNull()
-    .references(() => systems.id, { onDelete: "cascade" }),
+    .references(() => workflows.id, { onDelete: "cascade" }),
   position: integer("position").notNull(),
   name: text("name").notNull(),
   // 'text' | 'build' — different runtime, tools, and model availability.
@@ -151,6 +151,6 @@ export const subjects = pgTable(
 );
 
 export type Workspace = typeof workspaces.$inferSelect;
-export type System = typeof systems.$inferSelect;
+export type Workflow = typeof workflows.$inferSelect;
 export type Stage = typeof stages.$inferSelect;
 export type Subject = typeof subjects.$inferSelect;

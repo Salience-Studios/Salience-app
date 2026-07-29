@@ -1,5 +1,5 @@
 import { and, eq, inArray, notInArray } from "drizzle-orm";
-import { db, systems, stages, subjects, workspaces } from "@/lib/db";
+import { db, workflows, stages, subjects, workspaces } from "@/lib/db";
 import {
   parseFrontMatter,
   str,
@@ -24,14 +24,14 @@ import { headSha, listTree, readFile, type RepoRef } from "./repo";
 
 export type ReconcileReport = {
   headSha: string | null;
-  systems: number;
+  workflows: number;
   stages: number;
   subjects: number;
   /** Files that look like structure but no longer parse as it. */
   issues: string[];
 };
 
-type ParsedSystem = {
+type ParsedWorkflow = {
   id: string;
   name: string;
   purpose: string;
@@ -42,7 +42,7 @@ type ParsedSystem = {
 
 type ParsedStage = {
   id: string;
-  systemDir: string;
+  workflowDir: string;
   name: string;
   type: string;
   position: number;
@@ -67,14 +67,14 @@ export async function reconcile(
   const tree = await listTree(ref);
   const issues: string[] = [];
 
-  const systemPaths: string[] = [];
+  const workflowPaths: string[] = [];
   const stagePaths: string[] = [];
   const subjectPaths: string[] = [];
 
   for (const entry of tree) {
     const parts = entry.path.split("/");
-    if (parts[0] === "Systems" && parts.at(-1) === "Context.md") {
-      if (parts.length === 3) systemPaths.push(entry.path);
+    if (parts[0] === "Workflows" && parts.at(-1) === "Context.md") {
+      if (parts.length === 3) workflowPaths.push(entry.path);
       else if (parts.length === 4) stagePaths.push(entry.path);
     } else if (
       parts[0] === "Subjects" &&
@@ -99,33 +99,33 @@ export async function reconcile(
     return parsed.data;
   };
 
-  // Systems ---------------------------------------------------------------
-  const parsedSystems: ParsedSystem[] = [];
-  for (const path of systemPaths) {
+  // Workflows ---------------------------------------------------------------
+  const parsedWorkflows: ParsedWorkflow[] = [];
+  for (const path of workflowPaths) {
     const data = await read(path);
     if (!data) continue;
-    if (str(data, "salience") !== "system") {
-      issues.push(`${path} — sits where a system should but is not one.`);
+    if (str(data, "salience") !== "workflow") {
+      issues.push(`${path} — sits where a workflow should but is not one.`);
       continue;
     }
     const id = str(data, "id");
     const name = str(data, "name");
     if (!id || !name) {
-      issues.push(`${path} — a system needs both an id and a name.`);
+      issues.push(`${path} — a workflow needs both an id and a name.`);
       continue;
     }
     const dir = path.slice(0, -"/Context.md".length);
-    parsedSystems.push({
+    parsedWorkflows.push({
       id,
       name,
       purpose: str(data, "purpose") ?? "",
-      position: num(data, "position") ?? parsedSystems.length + 1,
+      position: num(data, "position") ?? parsedWorkflows.length + 1,
       repoPath: dir,
       dir,
     });
   }
 
-  const systemByDir = new Map(parsedSystems.map((s) => [s.dir, s]));
+  const workflowByDir = new Map(parsedWorkflows.map((w) => [w.dir, w]));
 
   // Stages ----------------------------------------------------------------
   const parsedStages: ParsedStage[] = [];
@@ -144,9 +144,9 @@ export async function reconcile(
     }
 
     const dir = path.slice(0, -"/Context.md".length);
-    const systemDir = dir.split("/").slice(0, 2).join("/");
-    if (!systemByDir.has(systemDir)) {
-      issues.push(`${path} — its system has no Context.md, so it has no parent.`);
+    const workflowDir = dir.split("/").slice(0, 2).join("/");
+    if (!workflowByDir.has(workflowDir)) {
+      issues.push(`${path} — its workflow has no Context.md, so it has no parent.`);
       continue;
     }
 
@@ -154,7 +154,7 @@ export async function reconcile(
     const model = str(data, "default_model");
     parsedStages.push({
       id,
-      systemDir,
+      workflowDir,
       name,
       type,
       position: num(data, "position") ?? parsedStages.length + 1,
@@ -190,36 +190,36 @@ export async function reconcile(
   }
 
   // Replace ---------------------------------------------------------------
-  for (const system of parsedSystems) {
+  for (const workflow of parsedWorkflows) {
     await db
-      .insert(systems)
+      .insert(workflows)
       .values({
-        id: system.id,
+        id: workflow.id,
         workspaceId,
-        name: system.name,
-        purpose: system.purpose,
-        position: system.position,
-        repoPath: system.repoPath,
+        name: workflow.name,
+        purpose: workflow.purpose,
+        position: workflow.position,
+        repoPath: workflow.repoPath,
       })
       .onConflictDoUpdate({
-        target: systems.id,
+        target: workflows.id,
         set: {
           workspaceId,
-          name: system.name,
-          purpose: system.purpose,
-          position: system.position,
-          repoPath: system.repoPath,
+          name: workflow.name,
+          purpose: workflow.purpose,
+          position: workflow.position,
+          repoPath: workflow.repoPath,
         },
       });
   }
 
   for (const stage of parsedStages) {
-    const systemId = systemByDir.get(stage.systemDir)!.id;
+    const workflowId = workflowByDir.get(stage.workflowDir)!.id;
     await db
       .insert(stages)
       .values({
         id: stage.id,
-        systemId,
+        workflowId,
         position: stage.position,
         name: stage.name,
         type: stage.type,
@@ -233,7 +233,7 @@ export async function reconcile(
       .onConflictDoUpdate({
         target: stages.id,
         set: {
-          systemId,
+          workflowId,
           position: stage.position,
           name: stage.name,
           type: stage.type,
@@ -264,9 +264,9 @@ export async function reconcile(
 
   // Anything the repo no longer describes stops existing. Deletes run last so
   // a failed read earlier never removes a row that is still in the tree.
-  await pruneSystems(workspaceId, parsedSystems.map((s) => s.id));
+  await pruneWorkflows(workspaceId, parsedWorkflows.map((w) => w.id));
   await pruneStages(
-    parsedSystems.map((s) => s.id),
+    parsedWorkflows.map((w) => w.id),
     parsedStages.map((s) => s.id),
   );
   await pruneSubjects(workspaceId, parsedSubjects.map((s) => s.id));
@@ -279,31 +279,31 @@ export async function reconcile(
 
   return {
     headSha: sha,
-    systems: parsedSystems.length,
+    workflows: parsedWorkflows.length,
     stages: parsedStages.length,
     subjects: parsedSubjects.length,
     issues,
   };
 }
 
-async function pruneSystems(workspaceId: string, keep: string[]) {
+async function pruneWorkflows(workspaceId: string, keep: string[]) {
   await db
-    .delete(systems)
+    .delete(workflows)
     .where(
       keep.length
-        ? and(eq(systems.workspaceId, workspaceId), notInArray(systems.id, keep))
-        : eq(systems.workspaceId, workspaceId),
+        ? and(eq(workflows.workspaceId, workspaceId), notInArray(workflows.id, keep))
+        : eq(workflows.workspaceId, workspaceId),
     );
 }
 
-async function pruneStages(systemIds: string[], keep: string[]) {
-  if (!systemIds.length) return;
+async function pruneStages(workflowIds: string[], keep: string[]) {
+  if (!workflowIds.length) return;
   await db
     .delete(stages)
     .where(
       keep.length
-        ? and(inArray(stages.systemId, systemIds), notInArray(stages.id, keep))
-        : inArray(stages.systemId, systemIds),
+        ? and(inArray(stages.workflowId, workflowIds), notInArray(stages.id, keep))
+        : inArray(stages.workflowId, workflowIds),
     );
 }
 

@@ -40,7 +40,7 @@ export default async function Subjects({
       {subjects.length === 0 ? (
         <EmptyState
           title="No subjects yet"
-          body="A subject is what a pass through a system is about — a client, a project, or a period. It holds every approved output about that one thing, in system order."
+          body="A subject stores all of the outputs of a single project. It collects every approved output from each stage of a workflow and organizes it in one place."
           action={
             <Link href={`/workspaces/${id}/subjects/new`}>
               <Button variant="primary">Create the first subject</Button>

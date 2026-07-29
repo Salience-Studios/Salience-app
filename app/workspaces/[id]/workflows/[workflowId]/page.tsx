@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWorkspace } from "@/lib/actions/workspace";
-import { getSystem, listStages } from "@/lib/actions/structure";
+import { getWorkflow, listStages } from "@/lib/actions/structure";
 import { parseGrants } from "@/lib/tools";
 import { modelLabel } from "@/lib/models";
 import {
@@ -14,35 +14,35 @@ import {
 } from "@/components/ui";
 import { Reorder } from "./reorder";
 
-export default async function SystemDetail({
+export default async function WorkflowDetail({
   params,
 }: {
-  params: Promise<{ id: string; systemId: string }>;
+  params: Promise<{ id: string; workflowId: string }>;
 }) {
-  const { id, systemId } = await params;
-  const [ws, system] = await Promise.all([getWorkspace(id), getSystem(systemId)]);
-  if (!ws || !system || system.workspaceId !== id) notFound();
+  const { id, workflowId } = await params;
+  const [ws, workflow] = await Promise.all([getWorkspace(id), getWorkflow(workflowId)]);
+  if (!ws || !workflow || workflow.workspaceId !== id) notFound();
 
-  const stages = await listStages(systemId);
+  const stages = await listStages(workflowId);
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-[var(--s-4)] py-[var(--s-6)]">
       <header className="mb-[var(--s-5)] flex flex-wrap items-start justify-between gap-[var(--s-3)]">
         <div>
-          <Eyebrow>System</Eyebrow>
+          <Eyebrow>Workflow</Eyebrow>
           <h1 className="heading-lg mt-[var(--s-1)] text-2xl font-semibold">
-            {system.name}
+            {workflow.name}
           </h1>
-          {system.purpose && (
+          {workflow.purpose && (
             <p className="mt-[var(--s-2)] text-sm text-[var(--text-dim)]">
-              {system.purpose}
+              {workflow.purpose}
             </p>
           )}
           <Num className="mt-[var(--s-2)] inline-block text-xs opacity-70">
-            {system.repoPath}
+            {workflow.repoPath}
           </Num>
         </div>
-        <Link href={`/workspaces/${id}/systems/${systemId}/stages/new`}>
+        <Link href={`/workspaces/${id}/workflows/${workflowId}/stages/new`}>
           <Button variant="primary">New stage</Button>
         </Link>
       </header>
@@ -52,7 +52,7 @@ export default async function SystemDetail({
           title="No stages yet"
           body="A stage is one step with one job: a goal, the inputs it may load, and the tools it may call. Nothing outside those lists reaches the model."
           action={
-            <Link href={`/workspaces/${id}/systems/${systemId}/stages/new`}>
+            <Link href={`/workspaces/${id}/workflows/${workflowId}/stages/new`}>
               <Button variant="primary">Create stage 01</Button>
             </Link>
           }

@@ -1,29 +1,29 @@
 "use client";
 
-import { createSystem } from "@/lib/actions/structure";
-import { generateSystemFiles } from "@/lib/generate/system";
-import { systemPath } from "@/lib/generate/paths";
+import { createWorkflow } from "@/lib/actions/structure";
+import { generateWorkflowFiles } from "@/lib/generate/workflow";
+import { workflowPath } from "@/lib/generate/paths";
 import { Wizard, type WizardStep } from "@/components/wizard";
 import { FilePreview } from "@/components/config";
 import { Field, Input, Num, Panel } from "@/components/ui";
 
 type Draft = { workspaceId: string; name: string; purpose: string };
 
-export function SystemForm({ workspaceId }: { workspaceId: string }) {
+export function WorkflowForm({ workspaceId }: { workspaceId: string }) {
   const steps: WizardStep<Draft, undefined>[] = [
     {
-      label: "System",
-      title: "Name the system",
+      label: "Workflow",
+      title: "Name the workflow",
       sub: "A repeatable workflow. Stages go inside it.",
       blocker: ({ draft }) => {
-        if (!draft.name.trim()) return "Give the system a name.";
+        if (!draft.name.trim()) return "Give the workflow a name.";
         if (!draft.purpose.trim()) return "Add one line on what it is for.";
         return null;
       },
       render: ({ draft, set }) => (
         <Panel className="flex flex-col gap-[var(--s-4)] p-[var(--s-5)]">
           <Field
-            label="System name"
+            label="Workflow name"
             hint="Becomes the folder. Spaces become underscores."
           >
             <Input
@@ -33,7 +33,7 @@ export function SystemForm({ workspaceId }: { workspaceId: string }) {
             />
             {draft.name.trim() && (
               <span className="text-sm text-[var(--text-muted)]">
-                Folder: <Num className="text-xs">{systemPath(draft.name)}</Num>
+                Folder: <Num className="text-xs">{workflowPath(draft.name)}</Num>
               </span>
             )}
           </Field>
@@ -53,7 +53,7 @@ export function SystemForm({ workspaceId }: { workspaceId: string }) {
       sub: "One file. Stages are added after this.",
       render: ({ draft }) => (
         <FilePreview
-          files={generateSystemFiles({
+          files={generateWorkflowFiles({
             id: "(assigned on save)",
             name: draft.name,
             purpose: draft.purpose,
@@ -68,10 +68,10 @@ export function SystemForm({ workspaceId }: { workspaceId: string }) {
     <Wizard
       steps={steps}
       initial={{ workspaceId, name: "", purpose: "" }}
-      storageKey={`salience:new-system:${workspaceId}`}
-      action={createSystem}
+      storageKey={`salience:new-workflow:${workspaceId}`}
+      action={createWorkflow}
       context={undefined}
-      submitLabel="Create system"
+      submitLabel="Create workflow"
       pendingLabel="Committing…"
       footnote={() => "Commits one file. The id is assigned on save."}
     />

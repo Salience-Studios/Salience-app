@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWorkspace, checkDrift } from "@/lib/actions/workspace";
-import { listSystems, listStages, listSubjects } from "@/lib/actions/structure";
+import { listWorkflows, listStages, listSubjects } from "@/lib/actions/structure";
 import {
   Button,
   Chip,
@@ -22,14 +22,14 @@ export default async function WorkspaceOverview({
   const ws = await getWorkspace(id);
   if (!ws) notFound();
 
-  const [systems, subjects, drifted] = await Promise.all([
-    listSystems(id),
+  const [workflows, subjects, drifted] = await Promise.all([
+    listWorkflows(id),
     listSubjects(id),
     checkDrift(id),
   ]);
 
   const stageCounts = await Promise.all(
-    systems.map(async (system) => (await listStages(system.id)).length),
+    workflows.map(async (workflow) => (await listStages(workflow.id)).length),
   );
   const totalStages = stageCounts.reduce((a, b) => a + b, 0);
   const repoUrl = `https://github.com/${ws.repoOwner}/${ws.repoName}`;
@@ -67,9 +67,9 @@ export default async function WorkspaceOverview({
 
       <section className="mb-[var(--s-5)] grid grid-cols-2 gap-[var(--s-3)] md:grid-cols-4">
         <StatTile
-          label="Systems"
-          value={systems.length}
-          tone={systems.length ? "default" : "dim"}
+          label="Workflows"
+          value={workflows.length}
+          tone={workflows.length ? "default" : "dim"}
         />
         <StatTile
           label="Stages"
@@ -87,21 +87,21 @@ export default async function WorkspaceOverview({
       <section>
         <div className="mb-[var(--s-3)] flex flex-wrap items-center justify-between gap-[var(--s-2)]">
           <div className="flex items-center gap-[var(--s-2)]">
-            <h2 className="heading-sm text-lg font-medium">Systems</h2>
-            <Chip>{systems.length}</Chip>
+            <h2 className="heading-sm text-lg font-medium">Workflows</h2>
+            <Chip>{workflows.length}</Chip>
           </div>
-          <Link href={`/workspaces/${id}/systems/new`}>
-            <Button variant="primary">New system</Button>
+          <Link href={`/workspaces/${id}/workflows/new`}>
+            <Button variant="primary">New workflow</Button>
           </Link>
         </div>
 
-        {systems.length === 0 ? (
+        {workflows.length === 0 ? (
           <EmptyState
-            title="No systems yet"
-            body="A system is one repeatable workflow — the ordered stages a piece of work moves through. Create the first one to start adding stages."
+            title="No workflows yet"
+            body="A workflow is one repeatable process — the ordered stages a piece of work moves through. Create the first one to start adding stages."
             action={
-              <Link href={`/workspaces/${id}/systems/new`}>
-                <Button variant="primary">Create the first system</Button>
+              <Link href={`/workspaces/${id}/workflows/new`}>
+                <Button variant="primary">Create the first workflow</Button>
               </Link>
             }
           />
@@ -110,7 +110,7 @@ export default async function WorkspaceOverview({
             <table className="w-full min-w-[34rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] text-left">
-                  <th className="eyebrow p-[var(--s-3)] font-normal">System</th>
+                  <th className="eyebrow p-[var(--s-3)] font-normal">Workflow</th>
                   <th className="eyebrow p-[var(--s-3)] font-normal">Purpose</th>
                   <th className="eyebrow p-[var(--s-3)] text-right font-normal">
                     Stages
@@ -121,18 +121,18 @@ export default async function WorkspaceOverview({
                 </tr>
               </thead>
               <tbody>
-                {systems.map((system, i) => (
+                {workflows.map((workflow, i) => (
                   <tr
-                    key={system.id}
+                    key={workflow.id}
                     className="border-b border-[var(--border)] last:border-0"
                   >
                     <td className="p-[var(--s-3)]">
-                      <Link href={`/workspaces/${id}/systems/${system.id}`}>
-                        {system.name}
+                      <Link href={`/workspaces/${id}/workflows/${workflow.id}`}>
+                        {workflow.name}
                       </Link>
                     </td>
                     <td className="p-[var(--s-3)] text-[var(--text-dim)]">
-                      {system.purpose || "—"}
+                      {workflow.purpose || "—"}
                     </td>
                     <td className="p-[var(--s-3)] text-right">
                       <Num tone={stageCounts[i] ? "default" : "dim"}>

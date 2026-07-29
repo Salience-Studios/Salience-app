@@ -39,7 +39,7 @@ export default async function Workspaces() {
       {rows.length === 0 ? (
         <EmptyState
           title="No workspaces yet"
-          body="A workspace is one business's operating structure, backed by one Git repository. Salience writes CLAUDE.md, Context.md, and the Systems and Subjects folders into it."
+          body="A workspace is one business's operating structure, backed by one Git repository. Salience writes CLAUDE.md, Context.md, and the Workflows and Subjects folders into it."
           action={
             <Link href="/workspaces/new">
               <Button variant="primary">Create your first workspace</Button>
@@ -54,7 +54,7 @@ export default async function Workspaces() {
                 <th className="eyebrow p-[var(--s-3)] font-normal">Workspace</th>
                 <th className="eyebrow p-[var(--s-3)] font-normal">Repository</th>
                 <th className="eyebrow p-[var(--s-3)] text-right font-normal">
-                  Systems
+                  Workflows
                 </th>
               </tr>
             </thead>
