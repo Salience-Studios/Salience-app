@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  getWorkspace,
-  listWorkspaceFiles,
-  checkDrift,
-} from "@/lib/actions/workspace";
-import { estimateTokens } from "@/lib/tokens";
+import { getWorkspace, checkDrift } from "@/lib/actions/workspace";
+import { listSystems, listStages, listSubjects } from "@/lib/actions/structure";
 import {
   Button,
   Chip,
@@ -15,6 +11,7 @@ import {
   Panel,
   StatTile,
 } from "@/components/ui";
+import { Reconcile } from "./reconcile";
 
 export default async function WorkspaceOverview({
   params,
@@ -25,12 +22,16 @@ export default async function WorkspaceOverview({
   const ws = await getWorkspace(id);
   if (!ws) notFound();
 
-  const [files, drifted] = await Promise.all([
-    listWorkspaceFiles(id),
+  const [systems, subjects, drifted] = await Promise.all([
+    listSystems(id),
+    listSubjects(id),
     checkDrift(id),
   ]);
 
-  const structureFiles = files.filter((f) => f.path.endsWith(".md"));
+  const stageCounts = await Promise.all(
+    systems.map(async (system) => (await listStages(system.id)).length),
+  );
+  const totalStages = stageCounts.reduce((a, b) => a + b, 0);
   const repoUrl = `https://github.com/${ws.repoOwner}/${ws.repoName}`;
 
   return (
@@ -50,74 +51,96 @@ export default async function WorkspaceOverview({
             {ws.repoOwner}/{ws.repoName}
           </a>
         </div>
-        <Link href="/workspaces">
-          <Button variant="ghost">All workspaces</Button>
-        </Link>
+        <div className="flex flex-wrap gap-[var(--s-2)]">
+          <Link href={`/workspaces/${id}/subjects`}>
+            <Button>Subjects</Button>
+          </Link>
+          <Link href={`/workspaces/${id}/files`}>
+            <Button variant="ghost">Files</Button>
+          </Link>
+        </div>
       </header>
 
-      {drifted && (
-        <Panel className="mb-[var(--s-4)] border-[var(--warn)] p-[var(--s-4)]">
-          <Eyebrow>Repository changed</Eyebrow>
-          <p className="mt-[var(--s-2)] text-sm text-[var(--text-dim)]">
-            This repository has commits Salience has not seen. The repository is
-            the source of truth — files below are read live from it.
-          </p>
-        </Panel>
-      )}
+      <div className="mb-[var(--s-5)]">
+        <Reconcile workspaceId={id} drifted={drifted} />
+      </div>
 
       <section className="mb-[var(--s-5)] grid grid-cols-2 gap-[var(--s-3)] md:grid-cols-4">
-        <StatTile label="Systems" value="0" tone="dim" />
-        <StatTile label="Subjects" value="0" tone="dim" />
-        <StatTile label="Runs 7d" value="0" tone="dim" />
+        <StatTile
+          label="Systems"
+          value={systems.length}
+          tone={systems.length ? "default" : "dim"}
+        />
+        <StatTile
+          label="Stages"
+          value={totalStages}
+          tone={totalStages ? "default" : "dim"}
+        />
+        <StatTile
+          label="Subjects"
+          value={subjects.length}
+          tone={subjects.length ? "default" : "dim"}
+        />
         <StatTile label="Spend 7d" value="$0.00" tone="dim" />
       </section>
 
       <section>
-        <div className="mb-[var(--s-3)] flex items-center gap-[var(--s-2)]">
-          <h2 className="heading-sm text-lg font-medium">Structure</h2>
-          <Chip>{structureFiles.length} files</Chip>
+        <div className="mb-[var(--s-3)] flex flex-wrap items-center justify-between gap-[var(--s-2)]">
+          <div className="flex items-center gap-[var(--s-2)]">
+            <h2 className="heading-sm text-lg font-medium">Systems</h2>
+            <Chip>{systems.length}</Chip>
+          </div>
+          <Link href={`/workspaces/${id}/systems/new`}>
+            <Button variant="primary">New system</Button>
+          </Link>
         </div>
 
-        {structureFiles.length === 0 ? (
+        {systems.length === 0 ? (
           <EmptyState
-            title="Nothing scaffolded yet"
-            body="This workspace has no markdown files. That usually means the scaffold commit did not land — check the repository."
+            title="No systems yet"
+            body="A system is one repeatable workflow — the ordered stages a piece of work moves through. Create the first one to start adding stages."
+            action={
+              <Link href={`/workspaces/${id}/systems/new`}>
+                <Button variant="primary">Create the first system</Button>
+              </Link>
+            }
           />
         ) : (
           <Panel className="overflow-x-auto">
             <table className="w-full min-w-[34rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] text-left">
-                  <th className="eyebrow p-[var(--s-3)] font-normal">File</th>
+                  <th className="eyebrow p-[var(--s-3)] font-normal">System</th>
+                  <th className="eyebrow p-[var(--s-3)] font-normal">Purpose</th>
                   <th className="eyebrow p-[var(--s-3)] text-right font-normal">
-                    Bytes
+                    Stages
                   </th>
                   <th className="eyebrow p-[var(--s-3)] text-right font-normal">
-                    ≈ Tokens
+                    Runs 7d
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {structureFiles.map((f) => (
+                {systems.map((system, i) => (
                   <tr
-                    key={f.path}
+                    key={system.id}
                     className="border-b border-[var(--border)] last:border-0"
                   >
                     <td className="p-[var(--s-3)]">
-                      <Link
-                        href={`/workspaces/${id}/files?path=${encodeURIComponent(f.path)}`}
-                        className="num text-xs"
-                      >
-                        {f.path}
+                      <Link href={`/workspaces/${id}/systems/${system.id}`}>
+                        {system.name}
                       </Link>
                     </td>
-                    <td className="p-[var(--s-3)] text-right">
-                      <Num tone="dim">{f.size ?? 0}</Num>
+                    <td className="p-[var(--s-3)] text-[var(--text-dim)]">
+                      {system.purpose || "—"}
                     </td>
                     <td className="p-[var(--s-3)] text-right">
-                      <Num tone="dim">
-                        {estimateTokens("x".repeat(f.size ?? 0))}
+                      <Num tone={stageCounts[i] ? "default" : "dim"}>
+                        {stageCounts[i]}
                       </Num>
+                    </td>
+                    <td className="p-[var(--s-3)] text-right">
+                      <Num tone="dim">0</Num>
                     </td>
                   </tr>
                 ))}
@@ -125,9 +148,9 @@ export default async function WorkspaceOverview({
             </table>
           </Panel>
         )}
+
         <p className="mt-[var(--s-2)] text-xs text-[var(--text-muted)]">
-          Token counts are estimates. Exact counts come from the provider when a
-          stage runs.
+          Runs and spend stay at zero until stages can execute at M3.
         </p>
       </section>
     </main>

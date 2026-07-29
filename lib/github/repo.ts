@@ -87,6 +87,7 @@ export async function commitFiles(
   ref: RepoRef,
   files: FileWrite[],
   message: string,
+  deletePaths: string[] = [],
 ): Promise<string> {
   const gh = installationOctokit(ref.installationId);
   const branch = (await defaultBranch(ref)) ?? "main";
@@ -132,16 +133,29 @@ export async function commitFiles(
     commit_sha: parent,
   });
 
+  // A null sha removes the path from the new tree. Renaming a stage folder is
+  // a write plus a delete, and both belong in the same commit — a repo that is
+  // briefly missing a stage is a repo whose index cannot be rebuilt from it.
+  const removals = deletePaths.map((path) => ({
+    path,
+    mode: "100644" as const,
+    type: "blob" as const,
+    sha: null,
+  }));
+
   const { data: tree } = await gh.git.createTree({
     owner: ref.owner,
     repo: ref.name,
     base_tree: parentCommit.tree.sha,
-    tree: blobs.map((b) => ({
-      path: b.path,
-      mode: "100644" as const,
-      type: "blob" as const,
-      sha: b.sha,
-    })),
+    tree: [
+      ...blobs.map((b) => ({
+        path: b.path,
+        mode: "100644" as const,
+        type: "blob" as const,
+        sha: b.sha,
+      })),
+      ...removals,
+    ],
   });
 
   const { data: commit } = await gh.git.createCommit({

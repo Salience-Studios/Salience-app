@@ -1,4 +1,5 @@
 import type { FileWrite } from "@/lib/github/repo";
+import { writeFrontMatter } from "./frontmatter";
 
 export type WorkspaceConfig = {
   name: string;
@@ -15,13 +16,6 @@ export type WorkspaceConfig = {
   /** Never do — one per line. */
   neverDo: string;
 };
-
-function frontMatter(fields: Record<string, string>): string {
-  const body = Object.entries(fields)
-    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
-    .join("\n");
-  return `---\n${body}\n---\n\n`;
-}
 
 /** Free text, one item per line, rendered as a markdown list. */
 function bullets(raw: string): string {
@@ -58,7 +52,7 @@ One stage at a time. Never skip ahead. Every completed stage produces one file i
 
 export function generateWorkspaceFiles(config: WorkspaceConfig): FileWrite[] {
   const claude =
-    frontMatter({ salience: "workspace", kind: "claude", name: config.name }) +
+    writeFrontMatter({ salience: "workspace", kind: "claude", name: config.name }) +
     `# CLAUDE.md — ${config.name}\n\n` +
     "Read this first. Then read `Context.md`. Both, every session.\n\n" +
     section("What this is", config.what) +
@@ -80,7 +74,7 @@ Keep every file short. No preamble, no recap of what you just did.
 `;
 
   const context =
-    frontMatter({ salience: "workspace", kind: "context", name: config.name }) +
+    writeFrontMatter({ salience: "workspace", kind: "context", name: config.name }) +
     "# Context\n\n" +
     section("What this is", config.what) +
     section(
